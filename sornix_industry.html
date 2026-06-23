@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SORNIX — Build. Automate. Scale.</title>
+<meta name="description" content="Sornix builds intelligent automation systems for social media, content pipelines, and digital workflows.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%2300f0ff'/><text y='.88em' font-size='72' x='12' fill='%23000507' font-family='Arial' font-weight='900'>S</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+<style>
+:root{
+  --c:#00f0ff; --p:#7b2fff; --pk:#ff2d78; --g:#00ff88; --o:#ff8800;
+  --bg:#000507; --bg2:#00080f; --t:#a0c8e0; --m:#2a4a60; --w:#ffffff;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html{font-size:16px;}
+body{
+  font-family:'Inter',sans-serif;
+  background:var(--bg);color:var(--t);
+  overflow-x:hidden;cursor:none;
+  -webkit-font-smoothing:antialiased;
+}
+::-webkit-scrollbar{width:2px;}
+::-webkit-scrollbar-thumb{background:linear-gradient(var(--c),var(--p));}
+
+/* ══ CURSOR ══ */
+#cur-dot{
+  position:fixed;z-index:99999;
+  width:10px;height:10px;
+  background:var(--c);border-radius:50%;
+  pointer-events:none;
+  transform:translate(-50%,-50%);
+  box-shadow:0 0 20px var(--c),0 0 40px rgba(0,240,255,.4);
+  transition:width .15s,height .15s,background .15s;
+  mix-blend-mode:screen;
+}
+#cur-ring{
+  position:fixed;z-index:99998;
+  width:36px;height:36px;
+  border:1px solid rgba(0,240,255,.5);border-radius:50%;
+  pointer-events:none;
+  transform:translate(-50%,-50%);
+}
+#cur-trail{position:fixed;z-index:99997;pointer-events:none;}
+.ct{position:absolute;border-radius:50%;background:var(--c);pointer-events:none;}
+
+/* ══ WEBGL CANVAS ══ */
+#webgl{
+  position:fixed;top:0;left:0;
+  width:100%;height:100%;
+  z-index:0;pointer-events:none;
+}
+
+/* ══ GRAIN ══ */
+#grain{
+  position:fixed;inset:0;z-index:9;
+  pointer-events:none;opacity:.028;
+  mix-blend-mode:screen;
+}
+
+/* ══ SCANLINES ══ */
+.scan{
+  position:fixed;inset:0;z-index:8;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.06) 3px,rgba(0,0,0,.06) 4px);
+}
+
+/* ══ NAV ══ */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:1000;
+  height:64px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 48px;
+  background:rgba(0,5,7,0);
+  backdrop-filter:blur(0px);
+  border-bottom:1px solid rgba(0,240,255,0);
+  transition:background .5s,backdrop-filter .5s,border-color .5s;
+  will-change:transform;
+}
+nav.scrolled{
+  background:rgba(0,5,7,.85);
+  backdrop-filter:blur(28px);
+  border-color:rgba(0,240,255,.06);
+}
+.nav-logo{
+  font-family:'Syne',sans-serif;font-weight:800;font-size:22px;
+  letter-spacing:4px;color:var(--w);
+  display:flex;align-items:center;gap:12px;cursor:pointer;
+  position:relative;z-index:1;
+}
+.logo-spin{
+  width:36px;height:36px;
+  background:conic-gradient(var(--c),var(--p),var(--pk),var(--c));
+  clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:900;color:var(--bg);
+  animation:hexSpin 6s linear infinite;
+  filter:drop-shadow(0 0 12px var(--c));
+}
+@keyframes hexSpin{to{filter:hue-rotate(360deg) drop-shadow(0 0 14px var(--c));}}
+.n-links{display:flex;gap:4px;list-style:none;align-items:center;position:relative;z-index:1;}
+.n-links a{
+  font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;
+  color:var(--m);padding:8px 14px;border-radius:4px;
+  transition:all .2s;cursor:pointer;letter-spacing:1px;
+}
+.n-links a:hover,.n-links a.active{color:var(--c);background:rgba(0,240,255,.05);}
+.n-cta{
+  color:var(--c)!important;
+  border:1px solid rgba(0,240,255,.35)!important;
+  position:relative;overflow:hidden;
+}
+.n-cta::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,var(--c),var(--p));
+  transform:translateX(-101%);transition:transform .35s;z-index:-1;
+}
+.n-cta:hover::after{transform:translateX(0);}
+.n-cta:hover{color:var(--bg)!important;}
+
+/* ══ SCROLL PROGRESS ══ */
+#sprog{
+  position:fixed;top:0;left:0;right:0;height:2px;z-index:1001;
+  background:rgba(0,240,255,.07);
+}
+#spfill{
+  height:100%;width:0;
+  background:linear-gradient(90deg,var(--c),var(--p),var(--pk));
+  box-shadow:0 0 10px rgba(0,240,255,.6);
+  transition:width .05s linear;
+}
+
+/* ══ LOADER ══ */
+#loader{
+  position:fixed;inset:0;background:var(--bg);
+  z-index:100000;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:4px;
+  overflow:hidden;
+}
+.l-scan{position:absolute;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,240,255,.015) 3px,rgba(0,240,255,.015) 4px);
+  animation:scanMove 6s linear infinite;}
+@keyframes scanMove{to{background-position:0 100px;}}
+.l-txt{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:4px;
+  color:rgba(0,240,255,.25);animation:fadeIn .6s ease forwards;opacity:0;}
+.l-name{
+  font-family:'Syne',sans-serif;font-weight:800;
+  font-size:clamp(52px,11vw,130px);letter-spacing:6px;color:var(--w);
+  position:relative;margin:12px 0;
+  text-shadow:0 0 60px rgba(0,240,255,.3);
+  animation:fadeIn .8s ease .2s forwards;opacity:0;
+}
+.l-name::before{
+  content:'SORNIX';position:absolute;inset:0;
+  color:transparent;-webkit-text-stroke:1px rgba(0,240,255,.25);
+  animation:glitch 4s steps(2) infinite;
+}
+@keyframes glitch{
+  0%,95%{transform:translate(0,0);}
+  96%{transform:translate(-3px,0);color:rgba(255,45,120,.3);}
+  97%{transform:translate(3px,0);color:rgba(0,240,255,.3);}
+  98%{transform:translate(0,0);color:transparent;}
+}
+@keyframes fadeIn{to{opacity:1;}}
+.l-bar{width:240px;height:1px;background:rgba(0,240,255,.08);margin-top:8px;
+  animation:fadeIn .6s ease .4s forwards;opacity:0;}
+.l-fill{height:100%;width:0;background:linear-gradient(90deg,var(--c),var(--p));
+  box-shadow:0 0 12px var(--c);
+  animation:fill 2.2s cubic-bezier(.4,0,.2,1) .5s forwards;}
+@keyframes fill{to{width:100%;}}
+.l-pct{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:3px;
+  color:var(--c);margin-top:10px;
+  animation:fadeIn .6s ease .4s forwards;opacity:0;}
+#loader.out{animation:loaderOut .8s ease forwards;}
+@keyframes loaderOut{to{opacity:0;visibility:hidden;pointer-events:none;}}
+
+/* ══ SECTIONS — all overlap via sticky ══ */
+#scroll-container{
+  position:relative;z-index:10;
+}
+
+/* Each section fills 100vh and sticks */
+.section{
+  position:relative;
+  min-height:100vh;
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+}
+
+/* ══ HERO ══ */
+#s-hero{
+  min-height:100vh;
+  flex-direction:column;
+  text-align:center;
+  padding:80px 24px;
+}
+.hero-grid{
+  position:absolute;inset:0;
+  background-image:
+    linear-gradient(rgba(0,240,255,.04) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,240,255,.04) 1px,transparent 1px);
+  background-size:80px 80px;
+  transform:perspective(800px) rotateX(25deg) scale(1.4);
+  transform-origin:50% 100%;
+  mask-image:radial-gradient(ellipse 100% 70% at 50% 100%,black,transparent 70%);
+  animation:gridPulse 5s ease-in-out infinite;
+}
+@keyframes gridPulse{0%,100%{opacity:.4;}50%{opacity:.9;}}
+.hero-eye{
+  display:inline-flex;align-items:center;gap:10px;
+  border:1px solid rgba(0,240,255,.25);border-radius:100px;
+  padding:8px 22px;margin-bottom:24px;
+  font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:4px;
+  color:var(--c);background:rgba(0,240,255,.04);
+  position:relative;z-index:1;
+  opacity:0;transform:translateY(20px);
+}
+.eye-dot{width:6px;height:6px;background:var(--c);border-radius:50%;
+  box-shadow:0 0 10px var(--c);animation:ping 1.5s infinite;}
+@keyframes ping{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.3;transform:scale(.6);}}
+.hero-h1{
+  font-family:'Syne',sans-serif;
+  font-size:clamp(52px,10vw,130px);
+  font-weight:800;line-height:.9;letter-spacing:-4px;
+  color:var(--w);position:relative;z-index:1;
+  opacity:0;transform:translateY(40px);
+}
+.hero-h1 .g{
+  display:block;
+  background:linear-gradient(90deg,var(--c),var(--p),var(--pk),var(--c));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  background-size:300% auto;animation:gradShift 4s linear infinite;
+  filter:drop-shadow(0 0 40px rgba(0,240,255,.4));
+}
+@keyframes gradShift{to{background-position:300%;}}
+.hero-h1::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(180deg,transparent 30%,rgba(0,240,255,.06) 50%,transparent 70%);
+  animation:holScan 3s ease-in-out infinite;pointer-events:none;
+}
+@keyframes holScan{0%{transform:translateY(-100%);}100%{transform:translateY(250%);}}
+.hero-sub{
+  font-size:clamp(14px,1.8vw,18px);color:var(--m);
+  max-width:520px;line-height:1.8;margin:24px auto 40px;
+  position:relative;z-index:1;
+  opacity:0;transform:translateY(20px);
+}
+.hero-btns{
+  display:flex;gap:16px;justify-content:center;flex-wrap:wrap;
+  position:relative;z-index:1;
+  opacity:0;transform:translateY(20px);
+}
+.btn-primary{
+  font-family:'Syne',sans-serif;font-size:12px;font-weight:700;letter-spacing:2px;
+  color:var(--bg);background:linear-gradient(135deg,var(--c),var(--p));
+  border:none;border-radius:6px;padding:16px 36px;cursor:pointer;
+  position:relative;overflow:hidden;
+  box-shadow:0 0 40px rgba(0,240,255,.3),0 0 80px rgba(123,47,255,.2);
+  transition:transform .25s,box-shadow .25s;will-change:transform;
+}
+.btn-primary::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(45deg,transparent,rgba(255,255,255,.2),transparent);
+  transform:translateX(-200%) skewX(-20deg);
+  animation:shimmer 3s ease-in-out infinite;
+}
+@keyframes shimmer{0%,100%{transform:translateX(-200%) skewX(-20deg);}50%{transform:translateX(200%) skewX(-20deg);}}
+.btn-primary:hover{transform:translateY(-4px) scale(1.04);
+  box-shadow:0 0 60px rgba(0,240,255,.5),0 0 120px rgba(123,47,255,.3),0 20px 40px rgba(0,0,0,.5);}
+.btn-secondary{
+  font-size:13px;color:var(--c);background:transparent;
+  border:1px solid rgba(0,240,255,.3);border-radius:6px;padding:16px 36px;cursor:pointer;
+  transition:all .3s;position:relative;overflow:hidden;will-change:transform;
+}
+.btn-secondary::before{content:'';position:absolute;inset:0;background:rgba(0,240,255,.06);
+  transform:scaleX(0);transform-origin:left;transition:transform .3s;}
+.btn-secondary:hover::before{transform:scaleX(1);}
+.btn-secondary:hover{border-color:var(--c);transform:translateY(-4px);box-shadow:0 0 30px rgba(0,240,255,.15);}
+.ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.2);
+  transform:scale(0);animation:rpl .6s linear;pointer-events:none;}
+@keyframes rpl{to{transform:scale(4);opacity:0;}}
+
+/* SCROLL HINT */
+.scroll-hint{
+  position:absolute;bottom:32px;left:50%;transform:translateX(-50%);
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  z-index:2;opacity:0;
+}
+.sh-mouse{width:22px;height:34px;border:1px solid rgba(0,240,255,.3);border-radius:11px;
+  display:flex;align-items:flex-start;justify-content:center;padding-top:5px;}
+.sh-wheel{width:2px;height:7px;background:var(--c);border-radius:2px;
+  animation:sw 2s ease-in-out infinite;}
+@keyframes sw{0%{opacity:1;transform:translateY(0);}75%{opacity:0;transform:translateY(14px);}100%{opacity:0;}}
+.sh-txt{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:4px;color:var(--m);}
+
+/* ══ STATS ══ */
+#s-stats{
+  min-height:auto;padding:0;
+  border-top:1px solid rgba(0,240,255,.06);
+  border-bottom:1px solid rgba(0,240,255,.06);
+}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);}
+.stat-c{
+  padding:56px 32px;border-right:1px solid rgba(0,240,255,.06);
+  position:relative;overflow:hidden;
+  will-change:transform;
+}
+.stat-c:last-child{border-right:none;}
+.stat-c::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--c),var(--p),var(--pk));
+  transform:scaleX(0);transform-origin:left;
+  transition:transform .5s cubic-bezier(.34,1.56,.64,1);
+}
+.stat-c:hover::before{transform:scaleX(1);}
+.stat-n{
+  font-family:'Syne',sans-serif;font-size:56px;font-weight:800;
+  letter-spacing:-3px;color:var(--w);line-height:1;margin-bottom:8px;
+  will-change:transform;
+  transition:transform .4s,filter .4s;
+}
+.stat-n b{color:var(--c);}
+.stat-c:hover .stat-n{transform:scale(1.06);filter:drop-shadow(0 0 20px rgba(0,240,255,.4));}
+.stat-l{font-size:13px;color:var(--m);}
+.stat-s{font-size:11px;color:rgba(42,74,96,.5);margin-top:4px;}
+
+/* ══ ABOUT / SERVICES ══ */
+.sec-label{
+  font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;
+  letter-spacing:3px;color:var(--c);text-transform:uppercase;
+  margin-bottom:14px;display:flex;align-items:center;gap:10px;
+}
+.sec-label::before{content:'//';color:rgba(0,240,255,.4);}
+.sec-h{
+  font-family:'Syne',sans-serif;
+  font-size:clamp(28px,4.5vw,56px);font-weight:800;
+  color:var(--w);letter-spacing:-1.5px;line-height:1.1;margin-bottom:16px;
+}
+.sec-d{font-size:16px;color:var(--m);max-width:480px;line-height:1.75;}
+
+/* Service cards */
+.svc-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
+  background:rgba(0,240,255,.06);border-radius:2px;overflow:hidden;
+  margin-top:56px;
+}
+.svc-c{
+  background:var(--bg2);padding:40px 32px;
+  position:relative;overflow:hidden;
+  transition:background .3s;cursor:default;
+  will-change:transform;
+}
+.svc-c::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--c),transparent);
+  opacity:0;transition:opacity .4s;
+}
+.svc-c:hover{background:rgba(0,240,255,.025);}
+.svc-c:hover::before{opacity:1;}
+/* Holographic shine */
+.svc-c .holo{
+  position:absolute;inset:0;pointer-events:none;
+  background:conic-gradient(from 0deg,transparent,rgba(0,240,255,.025),transparent);
+  opacity:0;transition:opacity .4s;
+  animation:holoSpin 6s linear infinite;
+}
+.svc-c:hover .holo{opacity:1;}
+@keyframes holoSpin{to{transform:rotate(360deg);}}
+.svc-tag{font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(0,240,255,.25);
+  letter-spacing:2px;margin-bottom:20px;}
+.svc-ico{
+  width:52px;height:52px;
+  background:rgba(0,240,255,.04);border:1px solid rgba(0,240,255,.1);
+  border-radius:10px;display:flex;align-items:center;justify-content:center;
+  font-size:24px;margin-bottom:20px;transition:all .4s;position:relative;z-index:1;
+}
+.svc-c:hover .svc-ico{
+  background:rgba(0,240,255,.09);border-color:rgba(0,240,255,.3);
+  box-shadow:0 0 24px rgba(0,240,255,.15),0 0 48px rgba(0,240,255,.06);
+  transform:translateY(-4px) scale(1.08);
+}
+.svc-t{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;
+  color:var(--w);margin-bottom:10px;position:relative;z-index:1;}
+.svc-d{font-size:14px;color:var(--m);line-height:1.65;position:relative;z-index:1;}
+
+/* ══ PIPELINE SECTION ══ */
+.pipe-wrap{display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center;}
+.pipe-list{display:flex;flex-direction:column;}
+.p-step{
+  display:flex;gap:20px;padding:28px 0;
+  border-bottom:1px solid rgba(0,240,255,.05);
+  transition:all .3s;
+}
+.p-step:last-child{border-bottom:none;}
+.p-step:hover .p-num{color:var(--c);border-color:var(--c);
+  box-shadow:0 0 24px rgba(0,240,255,.2);}
+.p-col{display:flex;flex-direction:column;align-items:center;flex-shrink:0;}
+.p-num{
+  width:46px;height:46px;border:1px solid rgba(0,240,255,.15);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--m);
+  transition:all .3s;background:rgba(0,240,255,.02);flex-shrink:0;
+}
+.p-vl{width:1px;flex:1;background:rgba(0,240,255,.06);margin-top:8px;}
+.p-body{padding-top:10px;}
+.p-t{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:var(--w);margin-bottom:6px;}
+.p-d{font-size:14px;color:var(--m);line-height:1.65;}
+
+/* 3D terminal */
+.terminal-3d{
+  background:rgba(0,8,15,.9);
+  border:1px solid rgba(0,240,255,.1);border-radius:10px;
+  overflow:hidden;
+  transform:perspective(1200px) rotateY(-10deg) rotateX(4deg);
+  transition:transform .6s cubic-bezier(.16,1,.3,1);
+  box-shadow:-24px 24px 80px rgba(0,0,0,.6),0 0 0 1px rgba(0,240,255,.04);
+  will-change:transform;
+}
+.terminal-3d:hover{transform:perspective(1200px) rotateY(0deg) rotateX(0deg);}
+.t-bar{
+  background:rgba(0,240,255,.04);border-bottom:1px solid rgba(0,240,255,.08);
+  padding:12px 18px;display:flex;align-items:center;gap:10px;
+}
+.t-dots{display:flex;gap:6px;}
+.td{width:10px;height:10px;border-radius:50%;}
+.tdr{background:#ff5f57;}.tdy{background:#ffbd2e;}.tdg{background:#28c840;}
+.t-title{font-family:'JetBrains Mono',monospace;font-size:10px;
+  color:rgba(0,240,255,.3);letter-spacing:2px;margin-left:6px;}
+.t-body{padding:20px;}
+.t-row{
+  display:flex;align-items:center;gap:12px;
+  background:rgba(0,240,255,.02);border:1px solid rgba(0,240,255,.06);
+  border-radius:8px;padding:12px 14px;margin-bottom:7px;
+  transition:all .3s;cursor:default;
+}
+.t-row:hover{border-color:rgba(0,240,255,.2);background:rgba(0,240,255,.05);transform:translateX(6px);}
+.t-ico{
+  width:34px;height:34px;background:rgba(0,0,0,.5);
+  border:1px solid rgba(0,240,255,.08);border-radius:7px;
+  display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;
+  transition:transform .3s;
+}
+.t-row:hover .t-ico{transform:scale(1.15) rotate(5deg);}
+.t-i{flex:1;}
+.t-n{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--t);}
+.t-r{font-size:10px;color:var(--m);margin-top:2px;}
+.t-badge{
+  font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;
+  letter-spacing:1px;padding:3px 8px;border-radius:3px;white-space:nowrap;
+}
+.tb-c{color:var(--c);background:rgba(0,240,255,.08);border:1px solid rgba(0,240,255,.2);}
+.tb-p{color:var(--p);background:rgba(123,47,255,.08);border:1px solid rgba(123,47,255,.2);}
+.tb-pk{color:var(--pk);background:rgba(255,45,120,.06);border:1px solid rgba(255,45,120,.2);}
+.tb-g{color:var(--g);background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.2);
+  animation:liveGlow 2s ease-in-out infinite;}
+@keyframes liveGlow{0%,100%{box-shadow:0 0 8px rgba(0,255,136,.3);}50%{box-shadow:0 0 24px rgba(0,255,136,.7);}}
+.t-arrow{text-align:center;font-size:10px;color:rgba(0,240,255,.2);
+  font-family:'JetBrains Mono',monospace;padding:2px 0 2px 32px;
+  animation:arrowBounce 2s ease-in-out infinite;}
+@keyframes arrowBounce{0%,100%{opacity:.2;transform:translateY(-2px);}50%{opacity:.8;color:var(--c);transform:translateY(2px);}}
+
+/* ══ TECH ══ */
+.tech-pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:48px;}
+.t-pill{
+  display:flex;align-items:center;gap:7px;
+  background:rgba(0,240,255,.025);border:1px solid rgba(0,240,255,.07);
+  border-radius:6px;padding:9px 16px;font-size:12px;color:var(--m);
+  font-family:'JetBrains Mono',monospace;letter-spacing:.5px;
+  transition:all .3s cubic-bezier(.34,1.56,.64,1);cursor:default;
+  will-change:transform;
+}
+.t-pill::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(0,240,255,.06),transparent);
+  transform:translateX(-100%);transition:transform .4s;
+}
+.t-pill:hover{color:var(--c);border-color:rgba(0,240,255,.3);
+  transform:translateY(-5px) scale(1.05);
+  box-shadow:0 8px 24px rgba(0,240,255,.1);}
+.t-d{width:4px;height:4px;background:var(--c);border-radius:50%;box-shadow:0 0 6px var(--c);}
+
+/* ══ WHY SORNIX ══ */
+.f-quad{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.f-q{
+  background:rgba(0,240,255,.02);border:1px solid rgba(0,240,255,.07);
+  border-radius:14px;padding:24px;
+  transition:all .4s cubic-bezier(.34,1.56,.64,1);cursor:default;
+  position:relative;overflow:hidden;will-change:transform;
+}
+.f-q::before{
+  content:'';position:absolute;inset:0;border-radius:14px;
+  background:radial-gradient(circle at var(--mx,50%) var(--my,50%),rgba(0,240,255,.1) 0%,transparent 60%);
+  opacity:0;transition:opacity .3s;
+}
+.f-q:hover::before{opacity:1;}
+.f-q:hover{border-color:rgba(0,240,255,.2);
+  transform:translateY(-6px) rotateX(4deg);
+  box-shadow:0 20px 40px rgba(0,0,0,.4),0 0 30px rgba(0,240,255,.06);}
+.f-ico{font-size:26px;margin-bottom:10px;display:block;}
+.f-t{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--w);margin-bottom:6px;}
+.f-d{font-size:13px;color:var(--m);line-height:1.6;}
+
+/* ══ CTA ══ */
+#s-cta{
+  flex-direction:column;text-align:center;padding:80px 24px;
+  position:relative;overflow:hidden;
+}
+.cta-orb{
+  position:absolute;border-radius:50%;filter:blur(120px);pointer-events:none;
+}
+.co1{width:700px;height:700px;background:rgba(0,240,255,.04);top:-150px;left:-200px;
+  animation:orbFloat 10s ease-in-out infinite;}
+.co2{width:500px;height:500px;background:rgba(123,47,255,.05);bottom:-100px;right:-100px;
+  animation:orbFloat 8s ease-in-out -4s infinite;}
+@keyframes orbFloat{0%,100%{transform:translate(0,0);}50%{transform:translate(20px,-30px);}}
+.cta-rings{position:absolute;left:50%;top:50%;pointer-events:none;}
+.c-ring{
+  position:absolute;border-radius:50%;
+  border:1px solid rgba(0,240,255,.04);
+  transform:translate(-50%,-50%);
+}
+.cta-h{
+  font-family:'Syne',sans-serif;
+  font-size:clamp(36px,6vw,84px);font-weight:800;
+  color:var(--w);letter-spacing:-2px;line-height:1;margin-bottom:18px;position:relative;
+}
+.cta-h span{
+  background:linear-gradient(90deg,var(--c),var(--p),var(--pk));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  background-size:200% auto;animation:gradShift 3s linear infinite;
+}
+.cta-sub{font-size:17px;color:var(--m);margin-bottom:40px;max-width:440px;}
+.cta-btn{
+  display:inline-flex;align-items:center;gap:12px;
+  font-family:'Syne',sans-serif;font-size:13px;font-weight:700;letter-spacing:2px;
+  color:var(--bg);
+  background:linear-gradient(135deg,var(--c),var(--p),var(--pk));
+  background-size:200% auto;animation:gradShift 3s linear infinite;
+  padding:18px 52px;border-radius:8px;border:none;cursor:pointer;
+  box-shadow:0 0 60px rgba(0,240,255,.35),0 0 120px rgba(123,47,255,.2);
+  transition:transform .3s,box-shadow .3s;position:relative;overflow:hidden;
+  will-change:transform;
+}
+.cta-btn::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(45deg,transparent,rgba(255,255,255,.2),transparent);
+  animation:shimmer 2.5s ease-in-out infinite;
+}
+.cta-btn:hover{transform:translateY(-6px) scale(1.04);
+  box-shadow:0 0 80px rgba(0,240,255,.6),0 0 160px rgba(123,47,255,.3),0 30px 60px rgba(0,0,0,.5);}
+
+/* ══ FOOTER ══ */
+footer{
+  position:relative;z-index:10;background:var(--bg2);
+  border-top:1px solid rgba(0,240,255,.06);padding:56px 0 28px;
+}
+.f-grid{display:grid;grid-template-columns:1.8fr 1fr 1fr 1fr;gap:48px;
+  padding-bottom:40px;border-bottom:1px solid rgba(0,240,255,.06);}
+.f-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;
+  letter-spacing:3px;color:var(--w);display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.f-hex{width:30px;height:30px;background:conic-gradient(var(--c),var(--p),var(--c));
+  clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+  display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--bg);font-weight:900;}
+.f-desc{font-size:13px;color:var(--m);line-height:1.7;max-width:250px;}
+.f-col h4{font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;
+  letter-spacing:2px;color:rgba(0,240,255,.3);margin-bottom:16px;text-transform:uppercase;}
+.f-col ul{list-style:none;display:flex;flex-direction:column;gap:10px;}
+.f-col a{font-size:13px;color:var(--m);transition:all .2s;cursor:pointer;display:inline-block;}
+.f-col a:hover{color:var(--c);transform:translateX(4px);}
+.f-bot{display:flex;align-items:center;justify-content:space-between;padding-top:24px;flex-wrap:wrap;gap:8px;}
+.f-copy{font-size:11px;color:rgba(42,74,96,.4);font-family:'JetBrains Mono',monospace;letter-spacing:1px;}
+.f-status{display:flex;align-items:center;gap:8px;
+  font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--g);letter-spacing:1px;}
+.f-dot{width:6px;height:6px;background:var(--g);border-radius:50%;
+  box-shadow:0 0 8px var(--g);animation:ping 2s infinite;}
+
+/* ══ PRIVACY PAGE ══ */
+#p-page{
+  display:none;position:relative;z-index:10;
+  background:var(--bg);padding-top:64px;
+}
+.pp-hero{
+  min-height:60vh;display:flex;align-items:center;
+  border-bottom:1px solid rgba(0,240,255,.06);
+  position:relative;overflow:hidden;padding:80px 0;
+}
+.pp-grid-bg{
+  position:absolute;inset:0;
+  background-image:linear-gradient(rgba(0,240,255,.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,240,255,.03) 1px,transparent 1px);
+  background-size:60px 60px;
+  mask-image:radial-gradient(ellipse 70% 80% at 80% 50%,black,transparent);
+}
+.pp-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  border:1px solid rgba(0,255,136,.2);border-radius:4px;
+  padding:6px 16px;margin-bottom:22px;
+  font-family:'JetBrains Mono',monospace;font-size:9px;
+  color:var(--g);letter-spacing:2px;background:rgba(0,255,136,.03);
+}
+.pp-h1{
+  font-family:'Syne',sans-serif;font-size:clamp(40px,6vw,72px);font-weight:800;
+  color:var(--w);letter-spacing:-2px;line-height:1.05;margin-bottom:18px;
+}
+.pp-h1 span{
+  background:linear-gradient(90deg,var(--c),var(--p));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.pp-sub{font-size:16px;color:var(--m);line-height:1.75;max-width:560px;}
+.pp-meta{display:flex;gap:40px;margin-top:32px;flex-wrap:wrap;}
+.pp-mi .ml{font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(0,240,255,.3);
+  letter-spacing:2px;margin-bottom:6px;}
+.pp-mi .mv{font-size:14px;color:var(--t);font-weight:500;}
+.pp-lay{display:grid;grid-template-columns:200px 1fr;gap:64px;padding:64px 0 96px;align-items:start;}
+.pp-sb{position:sticky;top:80px;}
+.pp-toc{background:rgba(0,8,15,.9);border:1px solid rgba(0,240,255,.08);
+  border-radius:8px;padding:20px;position:relative;overflow:hidden;}
+.pp-toc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--c),var(--p),transparent);}
+.toc-hd{font-family:'JetBrains Mono',monospace;font-size:8px;color:rgba(0,240,255,.3);
+  letter-spacing:2px;margin-bottom:14px;padding-bottom:10px;
+  border-bottom:1px solid rgba(0,240,255,.06);}
+.toc-list{list-style:none;display:flex;flex-direction:column;gap:2px;}
+.toc-list a{display:flex;align-items:center;gap:8px;
+  font-size:11px;color:var(--m);padding:7px 10px;border-radius:4px;
+  transition:all .18s;cursor:pointer;font-family:'JetBrains Mono',monospace;letter-spacing:.5px;}
+.toc-list a:hover,.toc-list a.ta{color:var(--c);background:rgba(0,240,255,.04);}
+.tn{font-size:9px;color:rgba(0,240,255,.2);min-width:18px;}
+.pp-sum{background:rgba(0,240,255,.025);border:1px solid rgba(0,240,255,.1);
+  border-radius:8px;padding:28px 32px;margin-bottom:56px;position:relative;overflow:hidden;}
+.pp-sum::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,var(--c),var(--p),var(--pk));}
+.pp-sum h3{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--c);
+  letter-spacing:2px;margin-bottom:18px;}
+.sp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.sp-i{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--m);line-height:1.5;}
+.sp-i::before{content:'✓';color:var(--g);font-weight:700;flex-shrink:0;}
+.pp-s{margin-bottom:56px;padding-bottom:56px;border-bottom:1px solid rgba(0,240,255,.05);scroll-margin-top:84px;}
+.pp-s:last-child{border-bottom:none;margin-bottom:0;}
+.pp-se{font-family:'JetBrains Mono',monospace;font-size:8px;color:rgba(0,240,255,.3);letter-spacing:2px;margin-bottom:10px;}
+.pp-s h2{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--w);margin-bottom:18px;}
+.pp-s p,.pp-s li{font-size:14px;color:var(--m);line-height:1.85;margin-bottom:12px;}
+.pp-s ul{padding-left:20px;margin-bottom:12px;}
+.pp-s ul li{list-style:disc;margin-bottom:6px;}
+.pp-s strong{color:var(--t);font-weight:600;}
+.pp-s a{color:var(--c);transition:opacity .2s;}
+.pp-s a:hover{opacity:.7;text-decoration:underline;}
+.c-b{background:rgba(0,240,255,.03);border:1px solid rgba(0,240,255,.12);
+  border-left:2px solid var(--c);border-radius:0 6px 6px 0;padding:16px 20px;margin:16px 0;}
+.c-b p{color:var(--t);margin-bottom:0;font-size:13px;}
+.c-g{background:rgba(0,255,136,.03);border:1px solid rgba(0,255,136,.12);
+  border-radius:6px;padding:16px 20px;margin:16px 0;display:flex;gap:10px;}
+.c-g p{color:var(--g);margin-bottom:0;font-size:13px;font-weight:500;}
+.tp-g{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;}
+.tp-i{display:flex;align-items:center;gap:10px;
+  background:rgba(0,8,15,.8);border:1px solid rgba(0,240,255,.07);
+  border-radius:6px;padding:12px 14px;font-size:13px;color:var(--m);transition:all .2s;cursor:pointer;}
+.tp-i:hover{border-color:rgba(0,240,255,.2);color:var(--t);}
+.tp-a{margin-left:auto;font-size:10px;color:rgba(0,240,255,.2);}
+.con-box{background:rgba(0,8,15,.8);border:1px solid rgba(0,240,255,.08);
+  border-radius:8px;padding:28px;margin-top:14px;position:relative;overflow:hidden;}
+.con-box::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,var(--c),var(--p),var(--pk));}
+.con-box .ce{display:inline-flex;align-items:center;gap:8px;
+  font-family:'JetBrains Mono',monospace;color:var(--c);font-size:14px;margin-top:10px;transition:opacity .2s;}
+.con-box .ce:hover{opacity:.7;}
+
+/* ══ WRAP ══ */
+.wrap{max-width:1120px;margin:0 auto;padding:0 48px;width:100%;}
+
+/* ══ SCROLL REVEAL ══ */
+.reveal{opacity:0;transform:translateY(40px);will-change:transform,opacity;}
+.reveal.up{transform:translateY(40px);}
+.reveal.left{transform:translateX(-40px);}
+.reveal.right{transform:translateX(40px);}
+.reveal.scale{transform:scale(.92);}
+
+/* ══ RESPONSIVE ══ */
+@media(max-width:960px){
+  nav{padding:0 20px;}
+  .wrap{padding:0 24px;}
+  .svc-grid{grid-template-columns:1fr 1fr;}
+  .stats-row{grid-template-columns:1fr 1fr;}
+  .pipe-wrap{grid-template-columns:1fr;}
+  .f-grid{grid-template-columns:1fr 1fr;gap:32px;}
+  .pp-lay{grid-template-columns:1fr;}
+  .pp-sb{position:static;}
+  .sp-grid{grid-template-columns:1fr;}
+  .tp-g{grid-template-columns:1fr;}
+}
+@media(max-width:600px){
+  .svc-grid{grid-template-columns:1fr;}
+  .f-grid{grid-template-columns:1fr;}
+  .f-quad{grid-template-columns:1fr;}
+  .n-links a:not(.n-cta){display:none;}
+}
+</style>
+</head>
+<body>
+
+<!-- GRAIN -->
+<canvas id="grain"></canvas>
+<!-- SCANLINES -->
+<div class="scan"></div>
+<!-- CURSOR -->
+<div id="cur-dot"></div>
+<div id="cur-ring"></div>
+<canvas id="cur-trail" style="position:fixed;inset:0;z-index:99996;pointer-events:none;"></canvas>
+<!-- PROGRESS -->
+<div id="sprog"><div id="spfill"></div></div>
+<!-- WEBGL -->
+<canvas id="webgl"></canvas>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="l-scan"></div>
+  <div class="l-txt">// INITIALIZING SORNIX SYSTEMS v4.0</div>
+  <div class="l-name">SORNIX</div>
+  <div class="l-txt" style="animation-delay:.1s">// BUILD · AUTOMATE · SCALE</div>
+  <div class="l-bar"><div class="l-fill"></div></div>
+  <div class="l-pct" id="lpct">0%</div>
+</div>
+
+<!-- NAV -->
+<nav id="nav">
+  <div class="nav-logo" onclick="showMain()">
+    <div class="logo-spin">S</div>SORNIX
+  </div>
+  <ul class="n-links">
+    <li><a class="active" onclick="showMain()">Home</a></li>
+    <li><a onclick="showMain();setTimeout(()=>document.getElementById('s-services').scrollIntoView({behavior:'smooth'}),100)">Services</a></li>
+    <li><a onclick="showMain();setTimeout(()=>document.getElementById('s-pipeline').scrollIntoView({behavior:'smooth'}),100)">System</a></li>
+    <li><a onclick="showPrivacy()">Privacy</a></li>
+    <li><a class="n-cta" href="mailto:sornix.studio@gmail.com">Get Started</a></li>
+  </ul>
+</nav>
+
+<!-- ════ MAIN SITE ════ -->
+<div id="main-site">
+
+<!-- HERO -->
+<section class="section" id="s-hero">
+  <div class="hero-grid"></div>
+  <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;text-align:center;padding:0 24px;">
+    <div class="hero-eye reveal"><div class="eye-dot"></div>Intelligent Automation Studio — 2026</div>
+    <h1 class="hero-h1 reveal">
+      BUILD.<br>AUTOMATE.<br>
+      <span class="g">SCALE.</span>
+    </h1>
+    <p class="hero-sub reveal">Sornix deploys end-to-end automation systems for social media, AI content pipelines, and digital workflows — zero manual effort, infinite output.</p>
+    <div class="hero-btns reveal">
+      <button class="btn-primary mag-btn" onclick="document.getElementById('s-services').scrollIntoView({behavior:'smooth'})">Explore Systems →</button>
+      <button class="btn-secondary mag-btn" onclick="document.getElementById('s-cta').scrollIntoView({behavior:'smooth'})">Let's Talk</button>
+    </div>
+  </div>
+  <div class="scroll-hint" id="scroll-hint">
+    <div class="sh-mouse"><div class="sh-wheel"></div></div>
+    <span class="sh-txt">Scroll to explore</span>
+  </div>
+</section>
+
+<!-- STATS -->
+<section class="section" id="s-stats" style="min-height:auto;">
+  <div style="width:100%;">
+    <div class="stats-row">
+      <div class="stat-c reveal">
+        <div class="stat-n" data-count="100" data-suffix="%">0%</div>
+        <div class="stat-l">Automated Execution</div>
+        <div class="stat-s">Zero manual steps post-setup</div>
+      </div>
+      <div class="stat-c reveal">
+        <div class="stat-n">₹<b>0</b></div>
+        <div class="stat-l">Starting Monthly Cost</div>
+        <div class="stat-s">Free-tier stack, no hidden fees</div>
+      </div>
+      <div class="stat-c reveal">
+        <div class="stat-n" data-count="6" data-suffix="+">0+</div>
+        <div class="stat-l">Platforms Per Pipeline</div>
+        <div class="stat-s">Deeply integrated, not patched</div>
+      </div>
+      <div class="stat-c reveal">
+        <div class="stat-n">24<b>/7</b></div>
+        <div class="stat-l">Always Running</div>
+        <div class="stat-s">No human intervention required</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SERVICES -->
+<section class="section" id="s-services" style="padding:120px 0;">
+  <div class="wrap">
+    <div class="sec-label reveal">What We Build</div>
+    <h2 class="sec-h reveal">Systems for Every<br>Digital Use Case</h2>
+    <p class="sec-d reveal">From social media automation to AI content pipelines — robust systems that replace repetitive work entirely.</p>
+    <div class="svc-grid">
+      <div class="svc-c reveal"><div class="holo"></div><div class="svc-tag">// SYSTEM_01</div><div class="svc-ico">📌</div><div class="svc-t">Social Media Automation</div><p class="svc-d">Auto-publish styled content to Pinterest, Instagram, and more. One photo in — AI-captioned pin live in seconds.</p></div>
+      <div class="svc-c reveal"><div class="holo"></div><div class="svc-tag">// SYSTEM_02</div><div class="svc-ico">🤖</div><div class="svc-t">AI Content Generation</div><p class="svc-d">Claude AI and LLMs integrated into your workflow. Captions, hashtags, copy — generated automatically at scale.</p></div>
+      <div class="svc-c reveal"><div class="holo"></div><div class="svc-tag">// SYSTEM_03</div><div class="svc-ico">🎨</div><div class="svc-t">Image Processing Pipelines</div><p class="svc-d">Auto-apply artistic filters, resize, and optimize images before publishing — no editing software required.</p></div>
+      <div class="svc-c reveal"><div class="holo"></div><div class="svc-tag">// SYSTEM_04</div><div class="svc-ico">🔗</div><div class="svc-t">Multi-Tool Integration</div><p class="svc-d">Connect Telegram, Make.com, Cloudinary, Notion, Google Sheets and 100+ tools into one seamless flow.</p></div>
+      <div class="svc-c reveal"><div class="holo"></div><div class="svc-tag">// SYSTEM_05</div><div class="svc-ico">📊</div><div class="svc-t">Automated Reporting</div><p class="svc-d">Auto-log what's published and when. Reports to Telegram or email — without lifting a finger.</p></div>
+      <div class="svc-c reveal"><div class="holo"></div><div class="svc-tag">// SYSTEM_06</div><div class="svc-ico">🔒</div><div class="svc-t">Private & Secure</div><p class="svc-d">Personal-use architecture. Your keys, your data, your control — no third-party access, no data sold, ever.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- PIPELINE -->
+<section class="section" id="s-pipeline" style="padding:120px 0;border-top:1px solid rgba(0,240,255,.06);">
+  <div class="wrap">
+    <div class="sec-label reveal">How It Works</div>
+    <h2 class="sec-h reveal">Simple Input.<br>Powerful Output.</h2>
+    <div class="pipe-wrap" style="margin-top:64px;">
+      <div class="pipe-list">
+        <div class="p-step reveal"><div class="p-col"><div class="p-num">01</div><div class="p-vl"></div></div><div class="p-body"><div class="p-t">Send a Photo via Telegram</div><p class="p-d">You send one image to your Telegram bot. That's your only action — everything else is fully automatic.</p></div></div>
+        <div class="p-step reveal"><div class="p-col"><div class="p-num">02</div><div class="p-vl"></div></div><div class="p-body"><div class="p-t">Automation Engine Activates</div><p class="p-d">Make.com triggers instantly, downloading your image and routing it through the pipeline in real time.</p></div></div>
+        <div class="p-step reveal"><div class="p-col"><div class="p-num">03</div><div class="p-vl"></div></div><div class="p-body"><div class="p-t">AI Styles & Captions It</div><p class="p-d">Cloudinary applies your chosen artistic style. Claude AI writes a Pinterest-perfect caption and hashtags automatically.</p></div></div>
+        <div class="p-step reveal"><div class="p-col"><div class="p-num">04</div></div><div class="p-body"><div class="p-t">Published & Confirmed</div><p class="p-d">The styled pin goes live on Pinterest. You receive a full confirmation on Telegram — title, pin ID, timestamp.</p></div></div>
+      </div>
+      <div class="terminal-3d reveal">
+        <div class="t-bar">
+          <div class="t-dots"><div class="td tdr"></div><div class="td tdy"></div><div class="td tdg"></div></div>
+          <span class="t-title">// PIPELINE_MONITOR v4.0</span>
+        </div>
+        <div class="t-body">
+          <div class="t-row"><div class="t-ico">📱</div><div class="t-i"><div class="t-n">telegram_bot</div><div class="t-r">photo_received → queue</div></div><span class="t-badge tb-c">TRIGGER</span></div>
+          <div class="t-arrow">↓</div>
+          <div class="t-row"><div class="t-ico">⚙️</div><div class="t-i"><div class="t-n">make.com</div><div class="t-r">orchestrating_flow</div></div><span class="t-badge tb-p">ROUTING</span></div>
+          <div class="t-arrow">↓</div>
+          <div class="t-row"><div class="t-ico">🎨</div><div class="t-i"><div class="t-n">cloudinary</div><div class="t-r">e_art:aurora → applied</div></div><span class="t-badge tb-pk">STYLING</span></div>
+          <div class="t-arrow">↓</div>
+          <div class="t-row"><div class="t-ico">🤖</div><div class="t-i"><div class="t-n">claude_haiku</div><div class="t-r">caption + 15 hashtags</div></div><span class="t-badge tb-pk">AI_GEN</span></div>
+          <div class="t-arrow">↓</div>
+          <div class="t-row"><div class="t-ico">📌</div><div class="t-i"><div class="t-n">pinterest_api</div><div class="t-r">pin_id: 83920194</div></div><span class="t-badge tb-g">LIVE ✓</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TECH -->
+<section class="section" id="s-tech" style="padding:120px 0;border-top:1px solid rgba(0,240,255,.06);">
+  <div class="wrap">
+    <div class="sec-label reveal">Tech Stack</div>
+    <h2 class="sec-h reveal">Best-in-Class Tools.<br>Zero Bloat.</h2>
+    <p class="sec-d reveal">Powerful free and low-cost platforms combined into reliable, scalable systems.</p>
+    <div class="tech-pills">
+      <div class="t-pill reveal" style="position:relative"><span class="t-d"></span>Telegram Bot API</div>
+      <div class="t-pill reveal" style="position:relative"><span class="t-d"></span>Make.com</div>
+      <div class="t-pill reveal" style="position:relative"><span class="t-d"></span>Cloudinary</div>
+      <div class="t-pill reveal" style="position:relative"><span class="t-d"></span>Anthropic Claude AI</div>
+      <div class="t-pill reveal" style="position:relative"><span class="t-d"></span>Pinterest API</div>
+      <div class="t-pill reveal" style="position:relative"><span class="t-d"></span>ImgBB</div>
+      <div class="t-pill reveal" style="position:relative"><span class="t-d"></span>Google Sheets API</div>
+      <div class="t-pill reveal" style="position:relative"><span class="t-d"></span>Notion API</div>
+      <div class="t-pill reveal" style="position:relative"><span class="t-d"></span>OpenAI GPT</div>
+      <div class="t-pill reveal" style="position:relative"><span class="t-d"></span>Gemini Flash</div>
+      <div class="t-pill reveal" style="position:relative"><span class="t-d"></span>Instagram Graph API</div>
+      <div class="t-pill reveal" style="position:relative"><span class="t-d"></span>Webhooks</div>
+      <div class="t-pill reveal" style="position:relative"><span class="t-d"></span>REST APIs</div>
+      <div class="t-pill reveal" style="position:relative"><span class="t-d"></span>n8n</div>
+    </div>
+  </div>
+</section>
+
+<!-- WHY SORNIX -->
+<section class="section" id="s-why" style="padding:120px 0;border-top:1px solid rgba(0,240,255,.06);">
+  <div class="wrap">
+    <div class="sec-label reveal">Why Sornix</div>
+    <h2 class="sec-h reveal">Built for<br>Real Results.</h2>
+    <p class="sec-d reveal" style="margin-bottom:40px;">No bloated SaaS. No hidden fees. Lean, powerful, custom automation — deployed once, running forever.</p>
+    <div class="f-quad">
+      <div class="f-q reveal"><span class="f-ico">⚡</span><div class="f-t">Instant Trigger</div><div class="f-d">Actions complete in seconds, not minutes. Real-time execution every time.</div></div>
+      <div class="f-q reveal"><span class="f-ico">🔒</span><div class="f-t">Your Data</div><div class="f-d">API keys stay in your environment. We never touch your credentials.</div></div>
+      <div class="f-q reveal"><span class="f-ico">🎯</span><div class="f-t">Custom-Built</div><div class="f-d">Every system engineered for your exact workflow. Zero templates.</div></div>
+      <div class="f-q reveal"><span class="f-ico">∞</span><div class="f-t">Scales Forever</div><div class="f-d">Post once or 10,000 times. Identical effort — zero fatigue.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="section" id="s-cta">
+  <div class="co1 cta-orb"></div>
+  <div class="co2 cta-orb"></div>
+  <div class="cta-rings">
+    <div class="c-ring" style="width:200px;height:200px;"></div>
+    <div class="c-ring" style="width:400px;height:400px;animation-delay:-.8s;"></div>
+    <div class="c-ring" style="width:650px;height:650px;animation-delay:-1.6s;"></div>
+    <div class="c-ring" style="width:900px;height:900px;animation-delay:-2.4s;"></div>
+  </div>
+  <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;text-align:center;padding:0 24px;">
+    <div class="hero-eye reveal" style="animation:none;opacity:1;"><div class="eye-dot"></div>Ready to Automate</div>
+    <h2 class="cta-h reveal">Let's Automate<br><span>Your World.</span></h2>
+    <p class="cta-sub reveal">Get a custom automation system built for your exact workflow. No templates, no bloat.</p>
+    <a href="mailto:sornix.studio@gmail.com" class="cta-btn mag-btn reveal">✉ Start a Conversation →</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="f-grid">
+      <div>
+        <div class="f-logo"><div class="f-hex">S</div>SORNIX</div>
+        <p class="f-desc">Intelligent automation systems for social media, AI content, and digital workflows. Built for creators and solopreneurs.</p>
+      </div>
+      <div class="f-col"><h4>Navigate</h4><ul><li><a onclick="window.scrollTo({top:0,behavior:'smooth'})">Home</a></li><li><a onclick="document.getElementById('s-services').scrollIntoView({behavior:'smooth'})">Services</a></li><li><a onclick="document.getElementById('s-pipeline').scrollIntoView({behavior:'smooth'})">Pipeline</a></li></ul></div>
+      <div class="f-col"><h4>Legal</h4><ul><li><a href="/privacy-policy" onclick="event.preventDefault();showPrivacy()">Privacy Policy</a></li><li><a href="/privacy-policy" onclick="event.preventDefault();showPrivacy()">Terms of Use</a></li></ul></div>
+      <div class="f-col"><h4>Contact</h4><ul><li><a href="mailto:sornix.studio@gmail.com">sornix.studio@gmail.com</a></li></ul></div>
+    </div>
+    <div class="f-bot">
+      <div class="f-copy">© 2026 SORNIX — ALL RIGHTS RESERVED</div>
+      <div class="f-status"><div class="f-dot"></div>ALL SYSTEMS OPERATIONAL</div>
+    </div>
+  </div>
+</footer>
+
+</div><!-- end main-site -->
+
+<!-- ════ PRIVACY PAGE ════ -->
+<div id="p-page">
+  <div class="pp-hero">
+    <div class="pp-grid-bg"></div>
+    <div class="wrap" style="position:relative;z-index:1;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(0,240,255,.3);letter-spacing:2px;margin-bottom:28px;display:flex;gap:8px;">
+        <a onclick="showMain()" style="color:rgba(0,240,255,.6);cursor:pointer;">HOME</a> › PRIVACY POLICY
+      </div>
+      <div class="pp-badge">✓ GDPR ALIGNED &nbsp;·&nbsp; ZERO TRACKING &nbsp;·&nbsp; ZERO ADS</div>
+      <h1 class="pp-h1">Privacy<br><span>Policy</span></h1>
+      <p class="pp-sub">How Sornix collects, processes, and protects information. Simple, transparent, and private — always.</p>
+      <div class="pp-meta">
+        <div class="pp-mi"><div class="ml">EFFECTIVE</div><div class="mv">June 14, 2026</div></div>
+        <div class="pp-mi"><div class="ml">UPDATED</div><div class="mv">June 14, 2026</div></div>
+        <div class="pp-mi"><div class="ml">OPERATED BY</div><div class="mv">Sornix</div></div>
+        <div class="pp-mi"><div class="ml">CONTACT</div><div class="mv">sornix.studio@gmail.com</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="pp-lay">
+      <aside class="pp-sb">
+        <div class="pp-toc">
+          <div class="toc-hd">// CONTENTS</div>
+          <ul class="toc-list">
+            <li><a href="#p1"><span class="tn">01</span>Who We Are</a></li>
+            <li><a href="#p2"><span class="tn">02</span>Info We Collect</a></li>
+            <li><a href="#p3"><span class="tn">03</span>How We Use Data</a></li>
+            <li><a href="#p4"><span class="tn">04</span>Data Sharing</a></li>
+            <li><a href="#p5"><span class="tn">05</span>Storage & Security</a></li>
+            <li><a href="#p6"><span class="tn">06</span>Cookies & Tracking</a></li>
+            <li><a href="#p7"><span class="tn">07</span>Third-Party Services</a></li>
+            <li><a href="#p8"><span class="tn">08</span>Your Rights</a></li>
+            <li><a href="#p9"><span class="tn">09</span>Children's Privacy</a></li>
+            <li><a href="#p10"><span class="tn">10</span>Policy Changes</a></li>
+            <li><a href="#p11"><span class="tn">11</span>Contact Us</a></li>
+          </ul>
+        </div>
+      </aside>
+      <div>
+        <div class="pp-sum">
+          <h3>// QUICK_SUMMARY</h3>
+          <div class="sp-grid">
+            <div class="sp-i">We do not sell your data</div>
+            <div class="sp-i">No ads, no tracking</div>
+            <div class="sp-i">No central content database</div>
+            <div class="sp-i">API keys stay with you</div>
+            <div class="sp-i">Images processed in transit</div>
+            <div class="sp-i">Deletion requests accepted</div>
+          </div>
+        </div>
+        <div class="pp-s" id="p1"><div class="pp-se">// 01</div><h2>Who We Are</h2><p>Sornix is a digital automation studio that designs and deploys intelligent automation systems for social media management, AI content generation, image processing, and digital workflow automation. Our tools connect with Telegram, Pinterest, Cloudinary, Anthropic, ImgBB, and Make.com.</p></div>
+        <div class="pp-s" id="p2"><div class="pp-se">// 02</div><h2>Information We Collect</h2><p>We minimize data collection. We may process:</p><ul><li><strong>Images</strong> — photos submitted for processing. Processed in transit, not stored by Sornix.</li><li><strong>API credentials</strong> — stored only in your own automation environment.</li><li><strong>Telegram IDs</strong> — used solely to send confirmations back to you.</li><li><strong>Operational metadata</strong> — timestamps within third-party platforms only.</li></ul><div class="c-b"><p>We do <strong>not</strong> collect names, emails, payment info, location, or any PII through our tools.</p></div></div>
+        <div class="pp-s" id="p3"><div class="pp-se">// 03</div><h2>How We Use Data</h2><p>All data is used exclusively to deliver the requested automation:</p><ul><li>Process, style, and optimize images as instructed</li><li>Generate AI captions, descriptions, and hashtags</li><li>Publish content to your connected platforms</li><li>Send confirmation notifications via Telegram</li><li>Operate and improve our systems</li></ul></div>
+        <div class="pp-s" id="p4"><div class="pp-se">// 04</div><h2>Data Sharing & Third Parties</h2><p>Your data may pass through these services as part of normal automation:</p><ul><li><strong>Make.com</strong> — automation orchestration</li><li><strong>Cloudinary / ImgBB</strong> — image processing and hosting</li><li><strong>Anthropic / Claude AI</strong> — content generation</li><li><strong>Pinterest</strong> — publishing</li><li><strong>Telegram</strong> — notifications</li></ul><p>Sornix does <strong>not</strong> sell, rent, or share your data for commercial purposes.</p></div>
+        <div class="pp-s" id="p5"><div class="pp-se">// 05</div><h2>Data Storage & Security</h2><p>Sornix tools are <strong>stateless by design</strong> — no central database of your content.</p><div class="c-g"><p>✓ Your content lives in your accounts: Cloudinary, ImgBB, Pinterest. Sornix holds no copies.</p></div><p>API keys are stored in your own automation environment (e.g., Make.com) and never transmitted to Sornix.</p></div>
+        <div class="pp-s" id="p6"><div class="pp-se">// 06</div><h2>Cookies & Tracking</h2><div class="c-g"><p>✓ Zero cookies. Zero tracking pixels. Zero analytics scripts. No data collected by visiting this page.</p></div></div>
+        <div class="pp-s" id="p7"><div class="pp-se">// 07</div><h2>Third-Party Services</h2><div class="tp-g"><a class="tp-i" href="https://www.make.com/en/privacy-notice" target="_blank">⚙️ Make.com<span class="tp-a">↗</span></a><a class="tp-i" href="https://cloudinary.com/privacy" target="_blank">🎨 Cloudinary<span class="tp-a">↗</span></a><a class="tp-i" href="https://www.anthropic.com/privacy" target="_blank">🤖 Anthropic<span class="tp-a">↗</span></a><a class="tp-i" href="https://policy.pinterest.com/en/privacy-policy" target="_blank">📌 Pinterest<span class="tp-a">↗</span></a><a class="tp-i" href="https://imgbb.com/page/privacy_policy" target="_blank">🖼️ ImgBB<span class="tp-a">↗</span></a><a class="tp-i" href="https://telegram.org/privacy" target="_blank">📱 Telegram<span class="tp-a">↗</span></a></div></div>
+        <div class="pp-s" id="p8"><div class="pp-se">// 08</div><h2>Your Rights</h2><ul><li><strong>Access</strong> — request any data we hold</li><li><strong>Deletion</strong> — request erasure</li><li><strong>Correction</strong> — request fixes to inaccurate data</li><li><strong>Portability</strong> — receive data in portable format</li><li><strong>Object</strong> — object to specific processing</li><li><strong>Withdraw Consent</strong> — at any time</li></ul></div>
+        <div class="pp-s" id="p9"><div class="pp-se">// 09</div><h2>Children's Privacy</h2><p>Sornix tools are not directed at individuals under 13. Contact <a href="mailto:sornix.studio@gmail.com">sornix.studio@gmail.com</a> if you believe a child has provided personal information.</p></div>
+        <div class="pp-s" id="p10"><div class="pp-se">// 10</div><h2>Policy Changes</h2><p>We may update this policy as our tools evolve. Changes are reflected in the "Last Updated" date above. Continued use constitutes acceptance.</p></div>
+        <div class="pp-s" id="p11"><div class="pp-se">// 11</div><h2>Contact Us</h2><p>We respond to all privacy inquiries within 5 business days.</p><div class="con-box"><strong style="color:var(--w);font-family:'Syne',sans-serif;font-size:16px;font-weight:700;letter-spacing:2px;">SORNIX</strong><p style="margin:8px 0 4px;font-size:11px;color:var(--m);font-family:'JetBrains Mono',monospace;letter-spacing:1px;">DIGITAL AUTOMATION STUDIO</p><a href="mailto:sornix.studio@gmail.com" class="ce">✉ sornix.studio@gmail.com</a></div></div>
+      </div>
+    </div>
+  </div>
+  <footer>
+    <div class="wrap">
+      <div class="f-grid">
+        <div><div class="f-logo"><div class="f-hex">S</div>SORNIX</div><p class="f-desc">Intelligent automation systems for social media, AI content, and digital workflows.</p></div>
+        <div class="f-col"><h4>Navigate</h4><ul><li><a onclick="showMain()">Home</a></li><li><a onclick="showMain();setTimeout(()=>document.getElementById('s-services').scrollIntoView({behavior:'smooth'}),100)">Services</a></li></ul></div>
+        <div class="f-col"><h4>Legal</h4><ul><li><a href="/privacy-policy" onclick="event.preventDefault();showPrivacy()">Privacy Policy</a></li></ul></div>
+        <div class="f-col"><h4>Contact</h4><ul><li><a href="mailto:sornix.studio@gmail.com">sornix.studio@gmail.com</a></li></ul></div>
+      </div>
+      <div class="f-bot">
+        <div class="f-copy">© 2026 SORNIX — ALL RIGHTS RESERVED</div>
+        <div class="f-status"><div class="f-dot"></div>ALL SYSTEMS OPERATIONAL</div>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<script>
+gsap.registerPlugin(ScrollTrigger);
+
+/* ══════════════════════════════════════════
+   THREE.JS — ULTRA CINEMATIC 3D BG
+══════════════════════════════════════════ */
+const renderer = new THREE.WebGLRenderer({canvas:document.getElementById('webgl'),alpha:true,antialias:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.setClearColor(0x000000,0);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.1,3000);
+camera.position.set(0,0,90);
+
+/* — PARTICLE FIELD — */
+const PN = 600;
+const pos = new Float32Array(PN*3);
+const col = new Float32Array(PN*3);
+const vel = [];
+const colors3 = [
+  new THREE.Color(0x00f0ff),
+  new THREE.Color(0x7b2fff),
+  new THREE.Color(0xff2d78),
+  new THREE.Color(0x00ff88),
+];
+for(let i=0;i<PN;i++){
+  pos[i*3]=(Math.random()-.5)*300;
+  pos[i*3+1]=(Math.random()-.5)*200;
+  pos[i*3+2]=(Math.random()-.5)*200-50;
+  const c=colors3[i%4];
+  col[i*3]=c.r; col[i*3+1]=c.g; col[i*3+2]=c.b;
+  vel.push({x:(Math.random()-.5)*.08,y:(Math.random()-.5)*.08,z:(Math.random()-.5)*.04});
+}
+const pGeo = new THREE.BufferGeometry();
+pGeo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+pGeo.setAttribute('color',new THREE.BufferAttribute(col,3));
+const pMat = new THREE.PointsMaterial({size:.4,vertexColors:true,transparent:true,opacity:.6,sizeAttenuation:true});
+const pts = new THREE.Points(pGeo,pMat);
+scene.add(pts);
+
+/* — WIREFRAME SHAPES — */
+function ws(geo,color,x,y,z){
+  const m=new THREE.LineSegments(new THREE.EdgesGeometry(geo),
+    new THREE.LineBasicMaterial({color,transparent:true,opacity:.1}));
+  m.position.set(x,y,z);scene.add(m);return m;
+}
+const shapes=[
+  ws(new THREE.IcosahedronGeometry(14,0),0x00f0ff,-60,20,-40),
+  ws(new THREE.OctahedronGeometry(10,0),0x7b2fff,65,-15,-50),
+  ws(new THREE.TetrahedronGeometry(9,0),0xff2d78,20,-40,-60),
+  ws(new THREE.BoxGeometry(12,12,12),0x00f0ff,55,30,-70),
+  ws(new THREE.IcosahedronGeometry(8,0),0xa855f7,-50,-30,-80),
+  ws(new THREE.OctahedronGeometry(7,0),0x00ff88,8,45,-55),
+];
+
+/* — TORUS RINGS — */
+function tr(r,color,x,y,z,rx=0,ry=0){
+  const m=new THREE.Mesh(new THREE.TorusGeometry(r,.06,12,100),
+    new THREE.MeshBasicMaterial({color,transparent:true,opacity:.07}));
+  m.position.set(x,y,z);m.rotation.set(rx,ry,0);scene.add(m);return m;
+}
+const rings=[
+  tr(22,0x00f0ff,-40,10,-20,Math.PI/2),
+  tr(16,0x7b2fff,55,-10,-30,Math.PI/3,Math.PI/4),
+  tr(12,0xff2d78,10,-32,-45,Math.PI/4),
+  tr(28,0xa855f7,0,0,-80,Math.PI/5,Math.PI/3),
+];
+
+/* — DNA HELIX — */
+const dnaGroup = new THREE.Group();
+const DN=80,DR=9,DH=100;
+const dm1=new THREE.LineBasicMaterial({color:0x00f0ff,transparent:true,opacity:.12});
+const dm2=new THREE.LineBasicMaterial({color:0x7b2fff,transparent:true,opacity:.09});
+const dcm=new THREE.LineBasicMaterial({color:0x00ff88,transparent:true,opacity:.05});
+const dp1=[],dp2=[];
+for(let i=0;i<DN;i++){
+  const t=(i/DN)*Math.PI*8,y=((i/DN)-.5)*DH;
+  dp1.push(new THREE.Vector3(Math.cos(t)*DR,y,Math.sin(t)*DR));
+  dp2.push(new THREE.Vector3(Math.cos(t+Math.PI)*DR,y,Math.sin(t+Math.PI)*DR));
+}
+dnaGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(dp1),dm1));
+dnaGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(dp2),dm2));
+for(let i=0;i<DN;i+=5){
+  dnaGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([dp1[i],dp2[i]]),dcm));
+}
+dnaGroup.position.set(-70,0,-60);
+scene.add(dnaGroup);
+
+/* — CENTRAL ICOSPHERE — */
+const mainSphere = new THREE.Mesh(
+  new THREE.IcosahedronGeometry(22,4),
+  new THREE.MeshBasicMaterial({color:0x00f0ff,wireframe:true,transparent:true,opacity:.018})
+);
+scene.add(mainSphere);
+
+/* — TUNNEL RINGS (scroll fly-through) — */
+const tunnelRings=[];
+for(let i=0;i<30;i++){
+  const r=new THREE.Mesh(
+    new THREE.TorusGeometry(15+i*.5,.03,8,60),
+    new THREE.MeshBasicMaterial({color:new THREE.Color().setHSL(i/30*.6,.9,.5),transparent:true,opacity:.06})
+  );
+  r.position.z=-i*20-100;
+  scene.add(r);
+  tunnelRings.push(r);
+}
+
+/* — GRID FLOOR — */
+const grid=new THREE.GridHelper(400,40,0x00f0ff,0x00f0ff);
+grid.material.transparent=true; grid.material.opacity=.025;
+grid.position.set(0,-50,-100);
+scene.add(grid);
+
+/* — MOUSE & SCROLL STATE — */
+let mx=0,my=0,tmx=0,tmy=0,scrollPct=0;
+document.addEventListener('mousemove',e=>{tmx=(e.clientX/innerWidth-.5)*2;tmy=(e.clientY/innerHeight-.5)*2;},{passive:true});
+window.addEventListener('scroll',()=>{
+  const sp=scrollY/(document.body.scrollHeight-innerHeight||1);
+  scrollPct=sp;
+  document.getElementById('spfill').style.width=(sp*100)+'%';
+},{passive:true});
+
+/* — RENDER LOOP — */
+const clock=new THREE.Clock();
+function renderLoop(){
+  requestAnimationFrame(renderLoop);
+  const t=clock.getElapsedTime();
+  mx+=(tmx-mx)*.04; my+=(tmy-my)*.04;
+
+  /* Particle drift */
+  const pa=pGeo.attributes.position.array;
+  for(let i=0;i<PN;i++){
+    pa[i*3]+=vel[i].x; pa[i*3+1]+=vel[i].y; pa[i*3+2]+=vel[i].z;
+    if(Math.abs(pa[i*3])>150)vel[i].x*=-1;
+    if(Math.abs(pa[i*3+1])>100)vel[i].y*=-1;
+    if(pa[i*3+2]>0||pa[i*3+2]<-250)vel[i].z*=-1;
+  }
+  pGeo.attributes.position.needsUpdate=true;
+  pts.rotation.y=t*.018+mx*.06;
+  pts.rotation.x=my*.04;
+
+  /* Shapes */
+  shapes.forEach((s,i)=>{
+    s.rotation.x+=.002+i*.0004;
+    s.rotation.y+=.003+i*.0005;
+    s.position.y+=Math.sin(t*.25+i)*.006;
+  });
+
+  /* Rings */
+  rings.forEach((r,i)=>{r.rotation.z+=.004+i*.001;r.rotation.x+=.001;});
+
+  /* DNA */
+  dnaGroup.rotation.y=t*.3;
+
+  /* Main sphere */
+  mainSphere.rotation.y=t*.06;mainSphere.rotation.x=t*.04;
+
+  /* TUNNEL — scroll driven */
+  tunnelRings.forEach((r,i)=>{
+    r.rotation.z=t*.3+i*.1;
+    r.rotation.x=t*.1;
+    r.material.opacity=.04+Math.sin(t*.5+i*.3)*.03;
+  });
+
+  /* Camera fly-through on scroll */
+  const camTargetZ=90-scrollPct*200;
+  const camTargetY=-scrollPct*30;
+  camera.position.z+=(camTargetZ-camera.position.z)*.06;
+  camera.position.y+=(camTargetY-camera.position.y)*.06;
+  camera.position.x+=(mx*8-camera.position.x)*.04;
+  camera.lookAt(0,-scrollPct*20,camera.position.z-100);
+
+  renderer.render(scene,camera);
+}
+renderLoop();
+
+window.addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+},{passive:true});
+
+/* ══════════════════════════════════════════
+   GSAP SCROLL ANIMATIONS
+══════════════════════════════════════════ */
+// Hero elements
+gsap.to('.hero-eye',{opacity:1,y:0,duration:1,ease:'power3.out',delay:.8});
+gsap.to('.hero-h1',{opacity:1,y:0,duration:1.1,ease:'power3.out',delay:1});
+gsap.to('.hero-sub',{opacity:1,y:0,duration:.9,ease:'power3.out',delay:1.3});
+gsap.to('.hero-btns',{opacity:1,y:0,duration:.8,ease:'power3.out',delay:1.5});
+gsap.to('#scroll-hint',{opacity:1,duration:.8,delay:2.2});
+
+// Stats counter
+gsap.utils.toArray('[data-count]').forEach(el=>{
+  const target=+el.dataset.count, suffix=el.dataset.suffix||'';
+  ScrollTrigger.create({
+    trigger:el,start:'top 85%',once:true,
+    onEnter:()=>{
+      gsap.to({v:0},{v:target,duration:1.4,ease:'power2.out',
+        onUpdate:function(){el.innerHTML=Math.round(this.targets()[0].v)+'<b>'+suffix+'</b>'}
+      });
+    }
+  });
+});
+
+// Reveal elements
+gsap.utils.toArray('.reveal').forEach((el,i)=>{
+  const dir=el.classList.contains('left')?{x:-40,y:0}:
+            el.classList.contains('right')?{x:40,y:0}:
+            el.classList.contains('scale')?{scale:.92,y:0}:{y:40};
+  gsap.fromTo(el,
+    {opacity:0,...dir},
+    {opacity:1,x:0,y:0,scale:1,duration:.9,ease:'power3.out',
+     delay:(i%4)*.07,
+     scrollTrigger:{trigger:el,start:'top 88%',once:true}}
+  );
+});
+
+// CTA rings animate
+let rt=0;
+(function animRings(){
+  rt+=.004;
+  document.querySelectorAll('.c-ring').forEach((r,i)=>{
+    r.style.transform=`translate(-50%,-50%) rotate(${rt*(i%2?1:-1)+i*.5}rad)`;
+  });
+  requestAnimationFrame(animRings);
+})();
+
+// Service card 3D tilt
+document.querySelectorAll('.svc-c,.terminal-3d').forEach(c=>{
+  c.addEventListener('mousemove',e=>{
+    const r=c.getBoundingClientRect();
+    const dx=(e.clientX-r.left-r.width/2)/(r.width/2);
+    const dy=(e.clientY-r.top-r.height/2)/(r.height/2);
+    c.style.transform=`perspective(1200px) rotateX(${-dy*7}deg) rotateY(${dx*9}deg) scale(1.02)`;
+    c.style.transition='transform .05s';
+  });
+  c.addEventListener('mouseleave',()=>{
+    c.style.transform='';c.style.transition='transform .6s cubic-bezier(.34,1.56,.64,1)';
+  });
+});
+
+// Feature quad tilt
+document.querySelectorAll('.f-q').forEach(c=>{
+  c.addEventListener('mousemove',e=>{
+    const r=c.getBoundingClientRect();
+    c.style.setProperty('--mx',((e.clientX-r.left)/r.width*100)+'%');
+    c.style.setProperty('--my',((e.clientY-r.top)/r.height*100)+'%');
+    c.style.transform=`perspective(800px) rotateX(${-(e.clientY-r.top-r.height/2)/r.height*10}deg) rotateY(${(e.clientX-r.left-r.width/2)/r.width*10}deg) translateY(-6px)`;
+    c.style.transition='transform .05s';
+  });
+  c.addEventListener('mouseleave',()=>{c.style.transform='';c.style.transition='transform .5s cubic-bezier(.34,1.56,.64,1)';});
+});
+
+/* ══════════════════════════════════════════
+   CURSOR — Magnetic Trail
+══════════════════════════════════════════ */
+const dot=document.getElementById('cur-dot');
+const ring=document.getElementById('cur-ring');
+const trailCanvas=document.getElementById('cur-trail');
+const tc=trailCanvas.getContext('2d');
+trailCanvas.width=innerWidth; trailCanvas.height=innerHeight;
+window.addEventListener('resize',()=>{trailCanvas.width=innerWidth;trailCanvas.height=innerHeight;});
+
+let cx=innerWidth/2,cy=innerHeight/2,rx2=cx,ry2=cy;
+const trailPts=[];
+document.addEventListener('mousemove',e=>{cx=e.clientX;cy=e.clientY;},{passive:true});
+
+function animCursor(){
+  requestAnimationFrame(animCursor);
+  dot.style.left=cx+'px'; dot.style.top=cy+'px';
+  rx2+=(cx-rx2)*.1; ry2+=(cy-ry2)*.1;
+  ring.style.left=rx2+'px'; ring.style.top=ry2+'px';
+
+  /* Trail */
+  trailPts.unshift({x:cx,y:cy,a:1});
+  if(trailPts.length>28)trailPts.pop();
+  tc.clearRect(0,0,trailCanvas.width,trailCanvas.height);
+  if(trailPts.length>2){
+    tc.beginPath();tc.moveTo(trailPts[0].x,trailPts[0].y);
+    for(let i=1;i<trailPts.length-1;i++){
+      const mx2=(trailPts[i].x+trailPts[i+1].x)/2;
+      const my2=(trailPts[i].y+trailPts[i+1].y)/2;
+      tc.quadraticCurveTo(trailPts[i].x,trailPts[i].y,mx2,my2);
+    }
+    const grad=tc.createLinearGradient(trailPts[0].x,trailPts[0].y,trailPts[trailPts.length-1].x,trailPts[trailPts.length-1].y);
+    grad.addColorStop(0,'rgba(0,240,255,.35)');
+    grad.addColorStop(.5,'rgba(123,47,255,.15)');
+    grad.addColorStop(1,'rgba(0,240,255,0)');
+    tc.strokeStyle=grad; tc.lineWidth=2; tc.lineCap='round';
+    tc.stroke();
+  }
+}
+animCursor();
+
+/* Hover state */
+document.querySelectorAll('button,a,[class*="svc-c"],[class*="stat-c"],[class*="f-q"],[class*="t-pill"]').forEach(el=>{
+  el.addEventListener('mouseenter',()=>{
+    dot.style.width='18px';dot.style.height='18px';dot.style.background='var(--p)';
+    ring.style.width='56px';ring.style.height='56px';
+    ring.style.borderColor='rgba(123,47,255,.6)';
+  });
+  el.addEventListener('mouseleave',()=>{
+    dot.style.width='10px';dot.style.height='10px';dot.style.background='var(--c)';
+    ring.style.width='36px';ring.style.height='36px';
+    ring.style.borderColor='rgba(0,240,255,.5)';
+  });
+});
+
+/* Magnetic buttons */
+document.querySelectorAll('.mag-btn').forEach(btn=>{
+  btn.addEventListener('mousemove',e=>{
+    const r=btn.getBoundingClientRect();
+    const dx=(e.clientX-r.left-r.width/2)*.25;
+    const dy=(e.clientY-r.top-r.height/2)*.25;
+    gsap.to(btn,{x:dx,y:dy,duration:.2,ease:'power2.out'});
+  });
+  btn.addEventListener('mouseleave',()=>{gsap.to(btn,{x:0,y:0,duration:.5,ease:'elastic.out(1,.5)'}); });
+  btn.addEventListener('click',e=>{
+    const r=btn.getBoundingClientRect(),size=Math.max(r.width,r.height)*2;
+    const rpl=document.createElement('span');
+    rpl.className='ripple';
+    rpl.style.cssText=`width:${size}px;height:${size}px;left:${e.clientX-r.left-size/2}px;top:${e.clientY-r.top-size/2}px;`;
+    btn.appendChild(rpl);setTimeout(()=>rpl.remove(),700);
+  });
+});
+
+/* Click particle burst */
+const bColors=['#00f0ff','#7b2fff','#ff2d78','#00ff88'];
+document.addEventListener('click',e=>{
+  for(let i=0;i<16;i++){
+    const p=document.createElement('div');
+    p.style.cssText=`position:fixed;width:4px;height:4px;border-radius:50%;background:${bColors[i%4]};left:${e.clientX}px;top:${e.clientY}px;pointer-events:none;z-index:99997;`;
+    document.body.appendChild(p);
+    const a=Math.random()*Math.PI*2,d=50+Math.random()*80;
+    p.animate([
+      {transform:'translate(-50%,-50%) scale(1)',opacity:1},
+      {transform:`translate(calc(-50% + ${Math.cos(a)*d}px),calc(-50% + ${Math.sin(a)*d}px)) scale(0)`,opacity:0}
+    ],{duration:600+Math.random()*300,easing:'cubic-bezier(.2,0,1,1)'}).onfinish=()=>p.remove();
+  }
+});
+
+/* ══════════════════════════════════════════
+   FILM GRAIN
+══════════════════════════════════════════ */
+(function grain(){
+  const gc=document.getElementById('grain');
+  const ctx=gc.getContext('2d');
+  let W,H,f=0;
+  function rs(){W=gc.width=innerWidth;H=gc.height=innerHeight;}
+  rs();window.addEventListener('resize',rs,{passive:true});
+  function draw(){
+    if(++f%3!==0){requestAnimationFrame(draw);return;}
+    const img=ctx.createImageData(W,H);const d=img.data;
+    for(let i=0;i<d.length;i+=4){const v=Math.random()*255|0;d[i]=d[i+1]=d[i+2]=v;d[i+3]=14;}
+    ctx.putImageData(img,0,0);requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ══════════════════════════════════════════
+   LOADER
+══════════════════════════════════════════ */
+const lpct=document.getElementById('lpct');
+let lv=0;
+const li=setInterval(()=>{lv+=Math.floor(Math.random()*7)+2;if(lv>=100){lv=100;clearInterval(li);}lpct.textContent=lv+'%';},45);
+window.addEventListener('load',()=>{setTimeout(()=>{document.getElementById('loader').classList.add('out');},2200);});
+
+/* ══════════════════════════════════════════
+   NAV SCROLL
+══════════════════════════════════════════ */
+window.addEventListener('scroll',()=>{
+  document.getElementById('nav').classList.toggle('scrolled',scrollY>60);
+},{passive:true});
+
+/* ══════════════════════════════════════════
+   PAGE SWITCHER
+══════════════════════════════════════════ */
+const mainSite=document.getElementById('main-site');
+const pPage=document.getElementById('p-page');
+function showPrivacy(){
+  history.pushState({},'Privacy Policy — SORNIX','/privacy-policy');
+  document.title='Privacy Policy — SORNIX';
+  gsap.to(mainSite,{opacity:0,y:-20,duration:.4,onComplete:()=>{
+    mainSite.style.display='none';
+    pPage.style.display='block';
+    gsap.fromTo(pPage,{opacity:0},{opacity:1,duration:.5});
+    window.scrollTo({top:0,behavior:'smooth'});
+  }});
+}
+function showMain(){
+  history.pushState({},'SORNIX — Build. Automate. Scale.','/');
+  document.title='SORNIX — Build. Automate. Scale.';
+  gsap.to(pPage,{opacity:0,duration:.4,onComplete:()=>{
+    pPage.style.display='none';
+    mainSite.style.display='block';
+    gsap.fromTo(mainSite,{opacity:0,y:20},{opacity:1,y:0,duration:.5});
+    window.scrollTo({top:0,behavior:'smooth'});
+    ScrollTrigger.refresh();
+  }});
+}
+
+/* Privacy TOC */
+if('IntersectionObserver' in window){
+  const ppL=document.querySelectorAll('.toc-list a');
+  new IntersectionObserver(es=>{
+    es.forEach(e=>{if(e.isIntersecting){ppL.forEach(a=>a.classList.remove('ta'));
+      const a=document.querySelector(`.toc-list a[href="#${e.target.id}"]`);if(a)a.classList.add('ta');}});
+  },{rootMargin:'-20% 0px -70% 0px'}).observe(...document.querySelectorAll('.pp-s'));
+}
+
+/* ══════════════════════════════════════════
+   URL-BASED ROUTING
+   Agar URL mein /privacy-policy ho toh
+   seedha privacy page open karo
+══════════════════════════════════════════ */
+(function(){
+  const path = window.location.pathname;
+  if(path === '/privacy-policy' || path === '/privacy-policy.html' || path.endsWith('/privacy-policy')){
+    // DOM load hone ke baad privacy page show karo
+    window.addEventListener('DOMContentLoaded', function(){
+      const ms = document.getElementById('main-site');
+      const pp = document.getElementById('p-page');
+      if(ms && pp){
+        ms.style.display = 'none';
+        pp.style.display = 'block';
+        document.title = 'Privacy Policy — SORNIX';
+      }
+    });
+  }
+
+  // Browser back/forward support
+  window.addEventListener('popstate', function(){
+    const p = window.location.pathname;
+    const ms = document.getElementById('main-site');
+    const pp = document.getElementById('p-page');
+    if(p === '/privacy-policy' || p === '/privacy-policy.html'){
+      ms.style.display = 'none';
+      pp.style.display = 'block';
+      document.title = 'Privacy Policy — SORNIX';
+    } else {
+      pp.style.display = 'none';
+      ms.style.display = 'block';
+      document.title = 'SORNIX — Build. Automate. Scale.';
+      ScrollTrigger.refresh();
+    }
+  });
+})();
+
+/* Typing effect hero-sub */
+const hsub=document.querySelector('.hero-sub');
+const htxt=hsub.textContent; hsub.textContent='';
+let hi=0;
+setTimeout(()=>{
+  const ti=setInterval(()=>{if(hi<htxt.length){hsub.textContent+=htxt[hi++];}else clearInterval(ti);},16);
+},1600);
+
+/* Performance hints */
+document.querySelectorAll('.svc-c,.stat-c,.f-q,.t-pill,.terminal-3d').forEach(el=>el.style.willChange='transform');
+</script>
+</body>
+</html>
